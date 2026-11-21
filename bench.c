@@ -6,13 +6,17 @@
  * Para cada n em {passo, 2*passo, ..., n_max} gera uma caverna n x n
  * aleatoria com I no canto inferior direito e F no superior esquerdo
  * (pior caso: a tabela da PD inteira é preenchida). Semente fixa => resultados reprodutiveis.
- * Só o tempo de resolverCimaEsq() é medido (não medi geração aqui).
+ * Só o tempo de resolverCimaEsq() (PD) e de resolverGuloso() é medido (não medi geração aqui).
+ * O guloso é tão rápido (O(n+m)) que roda REPS_GULOSO vezes por tamanho para a média ser confiável.
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
 #include "caverna.h"
+#include "guloso.h"
+
+#define REPS_GULOSO 2000
 
 static unsigned long long rng_estado = 123456789ULL;
 static unsigned int prox(void) {            /* xorshift simples e portavel */
@@ -48,8 +52,8 @@ int main(int argc, char **argv) {
 
     FILE *f = fopen(csv, "w");
     if (!f) { perror("Erro ao criar CSV"); return 1; }
-    fprintf(f, "n,celulas,tempo_ms\n");
-    printf("%8s %12s %12s\n", "n", "celulas", "tempo_ms");
+    fprintf(f, "n,celulas,tempo_ms,tempo_guloso_ms\n");
+    printf("%8s %12s %12s %16s\n", "n", "celulas", "tempo_ms", "guloso_ms");
 
     for (int n = passo; n <= nmax; n += passo) {
         Caverna c;
@@ -62,8 +66,19 @@ int main(int argc, char **argv) {
             total += 1000.0 * (double)(clock() - t0) / CLOCKS_PER_SEC;
         }
         double media = total / reps;
-        printf("%8d %12lld %12.3f\n", n, (long long)n * n, media);
-        fprintf(f, "%d,%lld,%.3f\n", n, (long long)n * n, media);
+
+        volatile long long sink = 0;   /* impede o compilador de descartar a chamada */
+        clock_t g0 = clock();
+        for (int r = 0; r < REPS_GULOSO; r++) {
+            long long pv = 0;
+            resolverGuloso(&c, &pv);
+            sink += pv;
+        }
+        double mediaG = 1000.0 * (double)(clock() - g0) / CLOCKS_PER_SEC / REPS_GULOSO;
+        (void)sink;
+
+        printf("%8d %12lld %12.3f %16.6f\n", n, (long long)n * n, media, mediaG);
+        fprintf(f, "%d,%lld,%.3f,%.6f\n", n, (long long)n * n, media, mediaG);
         liberarCaverna(&c);
     }
     fclose(f);

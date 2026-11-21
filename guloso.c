@@ -3,11 +3,9 @@
 #include <string.h>
 
 #include "guloso.h"
+#include "arte.h"
 
 typedef struct { int l, c; } Pos;
-
-#define MARCA_PD 1
-#define MARCA_GU 2
 
 enum { G_CHEGOU = 1, G_MORREU = 0, G_SEM_CAMINHO = -1 };
 
@@ -18,7 +16,8 @@ enum { G_CHEGOU = 1, G_MORREU = 0, G_SEM_CAMINHO = -1 };
    Preenche cam[0..*n-1] com o trajeto (inclusive a celula onde morreu). */
 static int simularGuloso(const Caverna *c, Pos *cam, int *n, long long *pvFinal) {
     *n = 0;
-    if (c->lf > c->li || c->cf > c->ci) return G_SEM_CAMINHO;
+    if (c->lf > c->li || c->cf > c->ci) 
+        return G_SEM_CAMINHO;
 
     int l = c->li, col = c->ci;
     long long pv = c->vidaInicial;
@@ -32,10 +31,16 @@ static int simularGuloso(const Caverna *c, Pos *cam, int *n, long long *pvFinal)
         else
             vaiCima = podeCima;
 
-        if (vaiCima) l--; else col--;
+        if (vaiCima) 
+            l--; 
+        else 
+            col--;
+
         pv += c->valor[IDX(c, l, col)];
         cam[(*n)++] = (Pos){l, col};
-        if (pv <= 0) { *pvFinal = pv; return G_MORREU; }
+        if (pv <= 0) { 
+            *pvFinal = pv; 
+            return G_MORREU; }
     }
     *pvFinal = pv;
     return G_CHEGOU;
@@ -46,67 +51,56 @@ static int simularGuloso(const Caverna *c, Pos *cam, int *n, long long *pvFinal)
 static int caminhoPD(const Caverna *c, Pos *cam, int *n, long long *pvFinal) {
     const char *tmp = "resultado_pd.tmp";
     *n = 0;
-    if (resolverCimaEsq(c, tmp) != 0) return -1;
+    if (resolverCimaEsq(c, tmp) != 0) 
+        return -1;
     FILE *f = fopen(tmp, "r");
-    if (!f) return -1;
+    if (!f) 
+        return -1;
 
     int l, col;
     long long pv = c->vidaInicial;
     while (fscanf(f, "%d %d", &l, &col) == 2) {
-        if (*n > 0) pv += c->valor[IDX(c, l, col)];
+        if (*n > 0) 
+            pv += c->valor[IDX(c, l, col)];
         cam[(*n)++] = (Pos){l, col};
     }
     fclose(f);
     remove(tmp);
-    if (*n == 0) return 0;
+    if (*n == 0) 
+        return 0;
     *pvFinal = pv;
     return 1;
 }
 
 int resolverGuloso(const Caverna *c, long long *pvFinal) {
     Pos *cam = (Pos *)malloc(((size_t)c->li + c->ci + 2) * sizeof(Pos));
-    if (!cam) return G_SEM_CAMINHO;
+    if (!cam) 
+        return G_SEM_CAMINHO;
     int n = 0;
     int r = simularGuloso(c, cam, &n, pvFinal);
     free(cam);
     return r;
 }
 
-static void desenharComparacao(const Caverna *c, const char *marca) {
-    int w = 3;
-    char buf[64];
-    for (size_t k = 0; k < (size_t)c->linhas * c->colunas; k++) {
-        int len = snprintf(buf, sizeof buf, "%+lld", c->valor[k]);
-        if (len + 1 > w) w = len + 1;
-    }
-    printf("\n     ");
-    for (int j = 0; j < c->colunas; j++) printf("%*d", w + 1, j);
-    printf("\n");
-    for (int i = 0; i < c->linhas; i++) {
-        printf("%4d ", i);
-        for (int j = 0; j < c->colunas; j++) {
-            char m = marca[IDX(c, i, j)];
-            if (i == c->lf && j == c->cf)      snprintf(buf, sizeof buf, "F");
-            else if (i == c->li && j == c->ci) snprintf(buf, sizeof buf, "I");
-            else if (m == (MARCA_PD | MARCA_GU)) snprintf(buf, sizeof buf, "*");
-            else if (m == MARCA_PD)            snprintf(buf, sizeof buf, "D");
-            else if (m == MARCA_GU)            snprintf(buf, sizeof buf, "G");
-            else                               snprintf(buf, sizeof buf, "%+lld", c->valor[IDX(c, i, j)]);
-            printf("%*s", w + 1, buf);
-        }
-        printf("\n");
-    }
-    printf("\nLegenda: D = so na PD | G = so no guloso | * = nos dois | I = inicio | F = fim\n");
+/* Mostra a caverna com os desenhos, marcando o trajeto `cam` com o rastro. */
+static void desenharCaminho(const Caverna *c, const char *titulo, const Pos *cam, int n) {
+    char *vis = (char *)calloc((size_t)c->linhas * c->colunas, 1);
+    if (!vis) 
+        return;
+    for (int k = 0; k < n; k++) 
+        vis[IDX(c, cam[k].l, cam[k].c)] = 1;
+    printf("\n--- %s ---\n", titulo);
+    printarCaverna(c, vis, c->li, c->ci);
+    free(vis);
 }
 
 int compararGulosoComPD(const Caverna *c, const char *saida) {
     size_t cap = (size_t)c->li + c->ci + 2;
     Pos *camG = (Pos *)malloc(cap * sizeof(Pos));
     Pos *camD = (Pos *)malloc(cap * sizeof(Pos));
-    char *marca = (char *)calloc((size_t)c->linhas * c->colunas, 1);
-    if (!camG || !camD || !marca) {
+    if (!camG || !camD) {
         fprintf(stderr, "Memoria insuficiente.\n");
-        free(camG); free(camD); free(marca);
+        free(camG); free(camD);
         return -1;
     }
 
@@ -114,37 +108,46 @@ int compararGulosoComPD(const Caverna *c, const char *saida) {
     long long pvG = 0, pvD = 0;
     int rG = simularGuloso(c, camG, &nG, &pvG);
     int rD = caminhoPD(c, camD, &nD, &pvD);
-    if (rD < 0) { free(camG); free(camD); free(marca); return -1; }
+
+    if (rD < 0) { 
+        free(camG); 
+        free(camD); 
+        return -1; 
+    }
 
     /* arquivo do guloso, no mesmo formato do resultado.txt */
     FILE *f = fopen(saida, "w");
     if (!f) {
         perror("Erro ao gravar a saida do guloso");
-        free(camG); free(camD); free(marca);
+        free(camG); free(camD);
         return -1;
     }
     if (rG == G_CHEGOU) {
-        for (int k = 0; k < nG; k++) fprintf(f, "%d %d\n", camG[k].l, camG[k].c);
+        for (int k = 0; k < nG; k++) 
+            fprintf(f, "%d %d\n", camG[k].l, camG[k].c);
     } else {
         fprintf(f, "impossível");  /* o guloso nao conseguiu sair vivo */
     }
     fclose(f);
 
-    for (int k = 0; k < nD; k++) marca[IDX(c, camD[k].l, camD[k].c)] |= MARCA_PD;
-    for (int k = 0; k < nG; k++) marca[IDX(c, camG[k].l, camG[k].c)] |= MARCA_GU;
-
     printf("=== Guloso x Programacao Dinamica ===\n");
     printf("Caverna %dx%d, PV iniciais: %lld\n", c->linhas, c->colunas, c->vidaInicial);
-    desenharComparacao(c, marca);
+    desenharCaminho(c, "Caminho da PD (otimo)", camD, nD);
+    desenharCaminho(c, "Caminho do guloso", camG, nG);
 
     printf("\nPD     : ");
-    if (rD == 1) printf("saiu com %lld PV (%d passos)\n", pvD, nD - 1);
-    else         printf("impossivel escapar\n");
+    if (rD == 1) 
+        printf("saiu com %lld PV (%d passos)\n", pvD, nD - 1);
+    else         
+        printf("impossivel escapar\n");
 
     printf("Guloso : ");
-    if (rG == G_CHEGOU)           printf("saiu com %lld PV (%d passos)\n", pvG, nG - 1);
-    else if (rG == G_MORREU)      printf("morreu em (%d, %d) com %lld PV\n", camG[nG - 1].l, camG[nG - 1].c, pvG);
-    else                          printf("impossivel escapar\n");
+    if (rG == G_CHEGOU)           
+        printf("saiu com %lld PV (%d passos)\n", pvG, nG - 1);
+    else if (rG == G_MORREU)      
+        printf("morreu em (%d, %d) com %lld PV\n", camG[nG - 1].l, camG[nG - 1].c, pvG);
+    else                          
+        printf("impossivel escapar\n");
 
     printf("\nConclusao: ");
     if (rD != 1)
@@ -159,6 +162,7 @@ int compararGulosoComPD(const Caverna *c, const char *saida) {
     printf("Custo: guloso O(n+m) | PD O(n*m).\n");
     printf("Caminho do guloso gravado em \"%s\".\n", saida);
 
-    free(camG); free(camD); free(marca);
+    free(camG); 
+    free(camD);
     return 0;
 }

@@ -14,6 +14,7 @@
 #endif
 
 #include "jogo_manual.h"
+#include "arte.h"
 
 typedef struct {
     int l, c;          /* posicao */
@@ -131,41 +132,10 @@ static void desenharTela(const Caverna *c, const char *visitado, const Passo *at
     if (interativo()) 
         limparTela();
 
-    /* largura da coluna = maior texto de celula + 1 */
-    int w = 3;
-    char buf[64];
-    for (size_t k = 0; k < (size_t)c->linhas * c->colunas; k++) {
-        int len = snprintf(buf, sizeof buf, "%+lld", c->valor[k]);
+    printf("=== MODO MANUAL ===\n");
+    printarCaverna(c, visitado, at->l, at->c);
 
-        if (len + 1 > w) 
-            w = len + 1;
-    }
-
-    printf("=== MODO MANUAL ===\n\n     ");
-
-    for (int j = 0; j < c->colunas; j++) 
-        printf("%*d", w + 1, j);
-
-    printf("\n");
-    for (int i = 0; i < c->linhas; i++) {
-        printf("%4d ", i);
-        for (int j = 0; j < c->colunas; j++) {
-            if (i == at->l && j == at->c)         
-                snprintf(buf, sizeof buf, "@");
-            else if (i == c->lf && j == c->cf)    
-                snprintf(buf, sizeof buf, "F");
-            else if (i == c->li && j == c->ci)    
-                snprintf(buf, sizeof buf, "I");
-            else if (visitado[IDX(c, i, j)])      
-                snprintf(buf, sizeof buf, ".");
-            else                                  
-                snprintf(buf, sizeof buf, "%+lld", c->valor[IDX(c, i, j)]);
-            printf("%*s", w + 1, buf);
-        }
-        printf("\n");
-    }
-
-    printf("\nPosicao: (%d, %d)   Pontos de vida: %lld\n", at->l, at->c, at->pv);
+    printf("Posicao: (%d, %d)   Pontos de vida: %lld\n", at->l, at->c, at->pv);
     printf("W/seta cima: cima | A/seta esquerda: esquerda | Z: desfazer | R: reiniciar | Q: sair\n");
     if (msg[0]) 
         printf("\n%s\n", msg);

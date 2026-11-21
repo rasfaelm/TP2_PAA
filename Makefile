@@ -13,7 +13,7 @@ else
     RMDIR = rm -rf
 endif
 
-SRC_COMUM = caverna.c mapa_manual.c jogo_manual.c guloso.c
+SRC_COMUM = caverna.c mapa_manual.c jogo_manual.c guloso.c GeradorDeMapa.c arte.c
 OBJ_COMUM = $(SRC_COMUM:.c=.o)
 
 all: caverna$(EXEC_EXT) bench$(EXEC_EXT)
@@ -21,23 +21,29 @@ all: caverna$(EXEC_EXT) bench$(EXEC_EXT)
 caverna$(EXEC_EXT): main.o $(OBJ_COMUM)
 	$(CC) $(CFLAGS) -o $@ $^
 
-bench$(EXEC_EXT): bench.o caverna.o guloso.o
+bench$(EXEC_EXT): bench.o caverna.o guloso.o arte.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-main.o: main.c caverna.h mapa_manual.h jogo_manual.h guloso.h
+main.o: main.c caverna.h mapa_manual.h jogo_manual.h guloso.h GeradorDeMapa.h arte.h
 bench.o: bench.c caverna.h guloso.h
 caverna.o: caverna.c caverna.h
 mapa_manual.o: mapa_manual.c mapa_manual.h caverna.h
-jogo_manual.o: jogo_manual.c jogo_manual.h caverna.h
-guloso.o: guloso.c guloso.h caverna.h
+jogo_manual.o: jogo_manual.c jogo_manual.h caverna.h arte.h
+guloso.o: guloso.c guloso.h caverna.h arte.h
+GeradorDeMapa.o: GeradorDeMapa.c GeradorDeMapa.h caverna.h
+arte.o: arte.c arte.h
 
-# make run MAPA=testes/caverna1.txt
+# make run  ->  abre o menu interativo
+run: caverna$(EXEC_EXT)
+	./caverna$(EXEC_EXT)
+
+# make run-mapa MAPA=testes/caverna1.txt  ->  resolve um mapa direto, sem menu
 MAPA ?= testes/caverna1.txt
 
-run: caverna$(EXEC_EXT)
+run-mapa: caverna$(EXEC_EXT)
 	./caverna$(EXEC_EXT) "$(MAPA)"
 	python3 -c "print(open('resultado.txt').read())"
 
@@ -63,4 +69,4 @@ else
 	$(RMDIR) comparacao
 endif
 
-.PHONY: all run grafico comparar clean
+.PHONY: all run run-mapa grafico comparar clean
